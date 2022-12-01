@@ -8,13 +8,13 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static java.util.Optional.ofNullable;
+import static java.util.Optional.*;
 
 public class PostRepository {
-    private static long EMPTY = 0;
+    private static final long EMPTY = 0;
 
-    private AtomicLong lastId;
-    private Map<Long, Post> storage;
+    private final AtomicLong lastId;
+    private final Map<Long, Post> storage;
 
     public PostRepository() {
         lastId = new AtomicLong();
@@ -26,16 +26,18 @@ public class PostRepository {
     }
 
     public Optional<Post> getById(long id) {
-        return ofNullable(storage.get(id));
+        return id == EMPTY ? empty() : ofNullable(storage.get(id));
     }
 
     public Post save(Post post) {
-        final var id = post.getId();
-        if (id == EMPTY || id > lastId.get() || getById(id).isEmpty()) {
-            post.setId(lastId.incrementAndGet());
-        }
-        storage.put(post.getId(), post);
-        return post;
+        return getById(post.getId())
+                .map(Post::getId)
+                .or(() -> of(lastId.incrementAndGet()))
+                .map(id -> {
+                    post.setId(id);
+                    storage.put(id, post);
+                    return post;
+                }).orElseThrow();
     }
 
     public void removeById(long id) {
