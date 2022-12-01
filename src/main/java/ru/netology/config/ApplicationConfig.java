@@ -9,10 +9,12 @@ import ru.netology.servlet.HandlerMapping;
 
 import java.util.Optional;
 
-import static ru.netology.servlet.HttpMethod.*;
-
 public class ApplicationConfig {
     private static volatile ApplicationConfig INSTANCE;
+
+    private static final String GET = "GET";
+    private static final String POST = "POST";
+    private static final String DELETE = "DELETE";
 
     private final HandlerMapping handlerMapping;
     private final PostRepository postRepository;
