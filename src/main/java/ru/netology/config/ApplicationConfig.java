@@ -1,5 +1,6 @@
 package ru.netology.config;
 
+import com.google.gson.Gson;
 import ru.netology.controller.PostController;
 import ru.netology.exception.NotFoundException;
 import ru.netology.repository.PostRepository;
@@ -8,29 +9,28 @@ import ru.netology.servlet.HandlerMapping;
 
 import java.util.Optional;
 
+import static ru.netology.servlet.HttpMethod.*;
+
 public class ApplicationConfig {
     private static volatile ApplicationConfig INSTANCE;
-
-    protected static final String GET = "GET";
-    protected static final String POST = "POST";
-    protected static final String DELETE = "DELETE";
 
     private final HandlerMapping handlerMapping;
     private final PostRepository postRepository;
     private final PostService postService;
     private final PostController postController;
-
+    private final Gson gson;
 
     private ApplicationConfig() {
+        gson = new Gson();
         postRepository = new PostRepository();
         postService = new PostService(postRepository);
-        postController = new PostController(postService);
+        postController = new PostController(postService, gson);
         handlerMapping = new HandlerMapping();
 
         configureRoutes(handlerMapping);
     }
 
-    protected void configureRoutes(HandlerMapping handlers) {
+    private void configureRoutes(HandlerMapping handlers) {
         handlers.addStaticPathHandler(GET, "/api/posts", (req, resp) -> {
             postController.all(resp);
         });
@@ -86,5 +86,9 @@ public class ApplicationConfig {
 
     public PostController getPostController() {
         return postController;
+    }
+
+    public Gson getGson() {
+        return gson;
     }
 }

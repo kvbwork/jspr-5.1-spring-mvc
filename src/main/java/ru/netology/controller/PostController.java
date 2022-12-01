@@ -12,13 +12,14 @@ import java.io.Reader;
 import static javax.servlet.http.HttpServletResponse.*;
 
 public class PostController {
-    public static final String APPLICATION_JSON = "application/json";
+    private static final String APPLICATION_JSON = "application/json";
+
     private final PostService service;
     private final Gson gson;
 
-    public PostController(PostService service) {
+    public PostController(PostService service, Gson gson) {
         this.service = service;
-        this.gson = new Gson();
+        this.gson = gson;
     }
 
     public void all(HttpServletResponse response) throws IOException {
