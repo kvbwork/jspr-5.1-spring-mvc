@@ -1,5 +1,7 @@
 package ru.netology.servlet;
 
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.support.GenericApplicationContext;
 import ru.netology.config.ApplicationConfig;
 
 import javax.servlet.http.HttpServlet;
@@ -11,11 +13,13 @@ import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 
 public class MainServlet extends HttpServlet {
 
+    private GenericApplicationContext context;
     private HandlerMapping handlerMapping;
 
     @Override
     public void init() {
-        handlerMapping = ApplicationConfig.getInstance().getHandlerMapping();
+        context = new AnnotationConfigApplicationContext(ApplicationConfig.class);
+        handlerMapping = context.getBean(HandlerMapping.class);
     }
 
     @Override
@@ -35,5 +39,8 @@ public class MainServlet extends HttpServlet {
         }
     }
 
+    public GenericApplicationContext getContext() {
+        return context;
+    }
 }
 

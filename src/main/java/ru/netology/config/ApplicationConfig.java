@@ -1,6 +1,9 @@
 package ru.netology.config;
 
 import com.google.gson.Gson;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import ru.netology.controller.PostController;
 import ru.netology.exception.NotFoundException;
 import ru.netology.repository.PostRepository;
@@ -9,30 +12,15 @@ import ru.netology.servlet.HandlerMapping;
 
 import java.util.Optional;
 
+@Configuration
 public class ApplicationConfig {
-    private static volatile ApplicationConfig INSTANCE;
 
     private static final String GET = "GET";
     private static final String POST = "POST";
     private static final String DELETE = "DELETE";
 
-    private final HandlerMapping handlerMapping;
-    private final PostRepository postRepository;
-    private final PostService postService;
-    private final PostController postController;
-    private final Gson gson;
-
-    private ApplicationConfig() {
-        gson = new Gson();
-        postRepository = new PostRepository();
-        postService = new PostService(postRepository);
-        postController = new PostController(postService, gson);
-        handlerMapping = new HandlerMapping();
-
-        configureRoutes(handlerMapping);
-    }
-
-    private void configureRoutes(HandlerMapping handlers) {
+    @Autowired
+    public void configurePostRoutes(HandlerMapping handlers, PostController postController) {
         handlers.addStaticPathHandler(GET, "/api/posts", (req, resp) -> {
             postController.all(resp);
         });
@@ -49,21 +37,6 @@ public class ApplicationConfig {
         });
     }
 
-    public static ApplicationConfig getInstance() {
-        if (INSTANCE == null) {
-            synchronized (ApplicationConfig.class) {
-                if (INSTANCE == null) {
-                    INSTANCE = new ApplicationConfig();
-                }
-            }
-        }
-        return INSTANCE;
-    }
-
-    public void dispose() {
-        INSTANCE = null;
-    }
-
     private static Optional<Long> getIdPathParam(String path) {
         final var lastSlashIndex = path.lastIndexOf("/");
         if (lastSlashIndex == -1 || lastSlashIndex >= path.length()) return Optional.empty();
@@ -74,23 +47,28 @@ public class ApplicationConfig {
         }
     }
 
-    public HandlerMapping getHandlerMapping() {
-        return handlerMapping;
+    @Bean
+    public HandlerMapping handlerMapping() {
+        return new HandlerMapping();
     }
 
-    public PostRepository getPostRepository() {
-        return postRepository;
+    @Bean
+    public PostRepository postRepository() {
+        return new PostRepository();
     }
 
-    public PostService getPostService() {
-        return postService;
+    @Bean
+    public PostService postService(PostRepository postRepository) {
+        return new PostService(postRepository);
     }
 
-    public PostController getPostController() {
-        return postController;
+    @Bean
+    public PostController postController(PostService postService, Gson gson) {
+        return new PostController(postService, gson);
     }
 
-    public Gson getGson() {
-        return gson;
+    @Bean
+    public Gson gson() {
+        return new Gson();
     }
 }
