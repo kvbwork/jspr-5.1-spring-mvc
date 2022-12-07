@@ -1,5 +1,6 @@
 package ru.netology.repository;
 
+import org.springframework.stereotype.Repository;
 import ru.netology.model.Post;
 
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.Optional.*;
 
+@Repository
 public class PostRepository {
     private static final long EMPTY = 0;
 
