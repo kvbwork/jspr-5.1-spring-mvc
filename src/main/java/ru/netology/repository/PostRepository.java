@@ -8,8 +8,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 import static java.util.Optional.*;
+import static java.util.function.Predicate.not;
 
 @Repository
 public class PostRepository {
@@ -24,11 +26,16 @@ public class PostRepository {
     }
 
     public List<Post> all() {
-        return List.copyOf(storage.values());
+        return storage.values().stream()
+                .filter(not(Post::isRemoved))
+                .collect(Collectors.toList());
     }
 
     public Optional<Post> getById(long id) {
-        return id == EMPTY ? empty() : ofNullable(storage.get(id));
+        return id == EMPTY
+                ? empty()
+                : ofNullable(storage.get(id))
+                .filter(not(Post::isRemoved));
     }
 
     public Post save(Post post) {
@@ -43,6 +50,6 @@ public class PostRepository {
     }
 
     public void removeById(long id) {
-        storage.remove(id);
+        getById(id).ifPresent(post -> post.setRemoved(true));
     }
 }
