@@ -6,15 +6,19 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.web.SpringJUnitWebConfig;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import ru.netology.dto.PostDto;
 import ru.netology.model.Post;
 import ru.netology.repository.PostRepository;
 
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -50,6 +54,7 @@ class MainServletTest {
     }
 
     @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
     void get_all_posts_empty_success() throws Exception {
         final var jsonEmptyArray = "[]";
         final var path = "/api/posts";
@@ -64,28 +69,53 @@ class MainServletTest {
     }
 
     @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
     void get_all_posts_list_success() throws Exception {
         final var path = "/api/posts";
         final var postNames = List.of("POST1", "POST2", "POST3");
         postNames.forEach(name -> postRepository.save(new Post(0, name)));
 
-        final var response = mockMvc.perform(
-                        get(path)
-                )
+        final var response = mockMvc.perform(get(path))
                 .andExpectAll(
                         status().isOk(),
                         content().contentTypeCompatibleWith(APPLICATION_JSON_VALUE)
                 ).andReturn().getResponse();
 
-        final var responsePostList = gson.fromJson(response.getContentAsString(), new TypeToken<List<Post>>() {
+        final var responsePostList = gson.fromJson(response.getContentAsString(), new TypeToken<List<PostDto>>() {
         });
-        assertThat(responsePostList.stream()
-                        .filter(post -> postNames.contains(post.getContent()))
-                        .count(),
-                is((long) postNames.size())
-        );
+        final var responsePostNamesCount = responsePostList.stream()
+                .filter(post -> postNames.contains(post.getContent()))
+                .count();
+        assertThat(responsePostNamesCount, is((long) postNames.size()));
     }
 
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+    void get_all_posts_without_removed_success() throws Exception {
+        final var path = "/api/posts";
+        final var postList = Stream.of("DELETED1", "DELETED2", "POST3", "POST4", "POST5")
+                .map(name -> new Post(0, name))
+                .map(post -> postRepository.save(post))
+                .collect(Collectors.toList());
+
+        postList.stream()
+                .filter(post -> post.getContent().startsWith("DELETED"))
+                .forEach(post -> postRepository.removeById(post.getId()));
+
+        final var response = mockMvc.perform(get(path))
+                .andExpectAll(
+                        status().isOk(),
+                        content().contentTypeCompatibleWith(APPLICATION_JSON_VALUE)
+                ).andReturn().getResponse();
+
+        final var responsePostList = gson.fromJson(response.getContentAsString(), new TypeToken<List<PostDto>>() {
+        });
+        final var deletedPostCount = responsePostList.stream()
+                .filter(post -> post.getContent().startsWith("DELETED"))
+                .count();
+        assertThat(responsePostList.size(), lessThan(postList.size()));
+        assertThat(deletedPostCount, is(0L));
+    }
 
     @Test
     void get_post_not_found_success() throws Exception {
@@ -112,7 +142,7 @@ class MainServletTest {
                 )
                 .andReturn().getResponse();
 
-        final var storedPost = gson.fromJson(response.getContentAsString(), Post.class);
+        final var storedPost = gson.fromJson(response.getContentAsString(), PostDto.class);
 
         assertThat(storedPost.getContent(), equalTo(TEST_STRING));
         assertThat(storedPost.getId(), is(requestedId));
@@ -132,7 +162,7 @@ class MainServletTest {
                 content().contentTypeCompatibleWith(APPLICATION_JSON_VALUE)
         ).andReturn().getResponse();
 
-        final var responsePost = gson.fromJson(response.getContentAsString(), Post.class);
+        final var responsePost = gson.fromJson(response.getContentAsString(), PostDto.class);
         final var storedPost = postRepository.getById(responsePost.getId()).orElseThrow();
 
         assertThat(responsePost.getContent(), equalTo(TEST_STRING));
@@ -157,7 +187,7 @@ class MainServletTest {
                 )
                 .andReturn().getResponse();
 
-        final var responsePost = gson.fromJson(response.getContentAsString(), Post.class);
+        final var responsePost = gson.fromJson(response.getContentAsString(), PostDto.class);
         assertThat(responsePost.getContent(), equalTo(postUpdate.getContent()));
         assertThat(responsePost.getId(), is(postUpdate.getId()));
 
@@ -165,6 +195,28 @@ class MainServletTest {
         assertThat(storedPost.getContent(), equalTo(postUpdate.getContent()));
     }
 
+    @Test
+    void update_removed_post_inserts_new_post_success() throws Exception {
+        final var path = "/api/posts";
+        final var UPDATE_STRING = "UPDATED";
+        final var storedPost = postRepository.save(new Post(0, TEST_STRING));
+        postRepository.removeById(storedPost.getId());
+        final var postUpdate = new Post(storedPost.getId(), UPDATE_STRING);
+
+        final var response = mockMvc.perform(
+                        post(path)
+                                .contentType(APPLICATION_JSON_VALUE)
+                                .content(gson.toJson(postUpdate))
+                ).andExpectAll(
+                        status().isOk(),
+                        content().contentTypeCompatibleWith(APPLICATION_JSON_VALUE)
+                )
+                .andReturn().getResponse();
+
+        final var responsePost = gson.fromJson(response.getContentAsString(), PostDto.class);
+        assertThat(responsePost.getContent(), equalTo(postUpdate.getContent()));
+        assertThat(responsePost.getId(), greaterThan(postUpdate.getId()));
+    }
 
     @Test
     void delete_post_success() throws Exception {
