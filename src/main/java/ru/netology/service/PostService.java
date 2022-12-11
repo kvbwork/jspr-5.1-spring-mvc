@@ -9,26 +9,41 @@ import java.util.List;
 
 @Service
 public class PostService {
-  private final PostRepository repository;
+    private static final long EMPTY_ID = 0L;
 
-  public PostService(PostRepository repository) {
-    this.repository = repository;
-  }
+    private final PostRepository repository;
 
-  public List<Post> all() {
-    return repository.all();
-  }
+    public PostService(PostRepository repository) {
+        this.repository = repository;
+    }
 
-  public Post getById(long id) {
-    return repository.getById(id).orElseThrow(NotFoundException::new);
-  }
+    public List<Post> all() {
+        return repository.all();
+    }
 
-  public Post save(Post post) {
-    return repository.save(post);
-  }
+    public Post getById(long id) {
+        return repository.getById(id).orElseThrow(NotFoundException::new);
+    }
 
-  public void removeById(long id) {
-    repository.removeById(id);
-  }
+    public Post save(Post post) {
+        return isNew(post)
+                ? repository.save(post)
+                : updateOrError(post);
+    }
+
+    private boolean isNew(Post post) {
+        return post.getId() == EMPTY_ID;
+    }
+
+    private Post updateOrError(Post post) {
+        return repository.getById(post.getId())
+                .map(p -> post)
+                .map(repository::save)
+                .orElseThrow(NotFoundException::new);
+    }
+
+    public void removeById(long id) {
+        repository.removeById(id);
+    }
 }
 
